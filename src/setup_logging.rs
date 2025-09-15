@@ -1,7 +1,7 @@
 use tracing::Level;
 use tracing_subscriber::{EnvFilter, prelude::*};
 
-pub fn config_logger(verbose: bool) {
+pub fn config(verbose: bool) {
     // 로거 설정
     tracing_subscriber::registry()
         // 로거 기본 설정

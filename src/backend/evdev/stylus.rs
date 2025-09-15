@@ -16,12 +16,17 @@ const ABS_PRESSURE: u16 = AbsoluteAxisCode::ABS_PRESSURE.0;
 const ABS_TILT_X: u16 = AbsoluteAxisCode::ABS_TILT_X.0;
 const ABS_TILT_Y: u16 = AbsoluteAxisCode::ABS_TILT_Y.0;
 
+const BARREL_TIMEOUT: i32 = 800;
+
 pub struct StylusBackend {
     device: VirtualDevice,
     current_down: bool,
     current_hover: bool,
     current_button: bool,
     inputs: EventList,
+    barrel_timestamp: i32,
+    last_button: bool,
+    barrel_activated: bool,
 }
 
 static RUBBER_OFF: LazyLock<EventList> = LazyLock::new(|| {
@@ -30,9 +35,9 @@ static RUBBER_OFF: LazyLock<EventList> = LazyLock::new(|| {
     events
 });
 
-static PENCIL_OFF: LazyLock<EventList> = LazyLock::new(|| {
+static PEN_OFF: LazyLock<EventList> = LazyLock::new(|| {
     let mut events = EventList::with_capacity(1);
-    events.push_key(&KeyCode::BTN_TOOL_PENCIL, 0);
+    events.push_key(&KeyCode::BTN_TOOL_PEN, 0);
     events
 });
 
@@ -82,9 +87,8 @@ impl StylusBackend {
             .with_keys(&AttributeSet::from_iter([
                 KeyCode::BTN_TOOL_PEN,
                 KeyCode::BTN_TOOL_RUBBER,
-                KeyCode::BTN_TOOL_PENCIL,
+                KeyCode::BTN_TOUCH,
                 KeyCode::BTN_STYLUS,
-                KeyCode::BTN_STYLUS2,
             ]))
             .err_to_string()?
             .with_msc(&AttributeSet::from_iter([MiscCode::MSC_TIMESTAMP]))
@@ -105,6 +109,9 @@ impl StylusBackend {
             current_down: false,
             current_hover: false,
             current_button: false,
+            barrel_timestamp: -1,
+            last_button: false,
+            barrel_activated: false,
         })
     }
 
@@ -120,12 +127,12 @@ impl StylusBackend {
         self.push_abs_event(ABS_TILT_X, pen_data.tilt_x as i32);
         self.push_abs_event(ABS_TILT_Y, pen_data.tilt_y as i32);
 
-        // Process tool (eraser, pencil)
+        // Hover -> Process tool (eraser, pencil)
         if (hover_changed || button_changed) && pen_data.hover && !pen_data.down {
             if pen_data.button {
                 if !hover_changed {
                     // Disable old tool
-                    self.device.emit(&PENCIL_OFF).err_to_string()?;
+                    self.device.emit(&PEN_OFF).err_to_string()?;
                 }
                 self.push_key(&KeyCode::BTN_TOOL_RUBBER, 1);
             } else {
@@ -133,34 +140,54 @@ impl StylusBackend {
                     // Disable old tool
                     self.device.emit(&RUBBER_OFF).err_to_string()?;
                 }
-                self.push_key(&KeyCode::BTN_TOOL_PENCIL, 1);
+                self.push_key(&KeyCode::BTN_TOOL_PEN, 1);
             }
             self.current_button = pen_data.button;
         }
 
-        // Process hover
+        // Unhover -> Remove all tools
         if hover_changed && !pen_data.hover {
             self.push_key(
                 if self.current_button {
                     &KeyCode::BTN_TOOL_RUBBER
                 } else {
-                    &KeyCode::BTN_TOOL_PENCIL
+                    &KeyCode::BTN_TOOL_PEN
                 },
                 0,
             );
         }
         self.current_hover = pen_data.hover;
 
+        // Process double tap action
+        let last_barrel_activated = self.barrel_activated;
+        if !self.last_button && pen_data.button {
+            if self.barrel_timestamp == -1 {
+                // First clicking
+                self.barrel_timestamp = pen_data.timestamp
+            } else if pen_data.timestamp - self.barrel_timestamp < BARREL_TIMEOUT {
+                // Second clicking
+                self.barrel_activated = true;
+                self.barrel_timestamp = -1;
+            } else {
+                // Timeout
+                self.barrel_timestamp = pen_data.timestamp;
+            }
+        }
+        self.last_button = pen_data.hover && pen_data.button;
+        if self.barrel_activated && (!pen_data.hover || !pen_data.button) {
+            self.barrel_activated = false;
+            self.barrel_timestamp = -1;
+        }
+        if last_barrel_activated != self.barrel_activated {
+            self.push_key(
+                &KeyCode::BTN_STYLUS,
+                if self.barrel_activated { 1 } else { 0 },
+            );
+        }
+
         // Process pen down (touch)
         if pen_data.down != self.current_down {
-            self.push_key(
-                if self.current_button {
-                    &KeyCode::BTN_STYLUS2
-                } else {
-                    &KeyCode::BTN_STYLUS
-                },
-                if pen_data.down { 1 } else { 0 },
-            );
+            self.push_key(&KeyCode::BTN_TOUCH, if pen_data.down { 1 } else { 0 });
             self.current_down = pen_data.down;
         }
         self.push_msc(MiscCode::MSC_TIMESTAMP.0, pen_data.timestamp);

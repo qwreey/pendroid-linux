@@ -4,13 +4,14 @@ mod adb_tracker;
 mod backend;
 mod cli;
 mod connect_ws;
-mod logging;
 mod parse;
+mod setup_autolaunch;
+mod setup_daemonize;
+mod setup_logging;
 
 use clap::Parser;
 use cli::Command;
 
-use daemonize::Daemonize;
 use qwreey_utility_rs::{ErrToString, RwMap};
 use tokio::task::JoinHandle;
 
@@ -22,15 +23,9 @@ async fn main() -> Result<(), String> {
     let command = Command::parse();
     userdata.insert_of(command.clone());
 
-    if command.daemon {
-        let daemonize = Daemonize::new();
-        match daemonize.start() {
-            Ok(_) => tracing::info!("Daemonized successfully"),
-            Err(e) => tracing::error!("Error while daemonize: {}", e),
-        }
-    }
-
-    logging::config_logger(command.verbose);
+    setup_autolaunch::config(command.enable_autolaunch, command.disable_autolaunch)?;
+    setup_daemonize::config(command.daemon);
+    setup_logging::config(command.verbose);
 
     userdata.insert_of(command.devices);
     userdata.insert("device_map", DeviceMap::new());

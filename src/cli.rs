@@ -9,6 +9,10 @@ pub struct Command {
     pub verbose: bool,
     #[arg(long)]
     pub daemon: bool,
+    #[arg(long)]
+    pub enable_autolaunch: bool,
+    #[arg(long)]
+    pub disable_autolaunch: bool,
 }
 
 const PARSE_ERROR: &str = "The device argument must be provided in the DeviceName:port format";
