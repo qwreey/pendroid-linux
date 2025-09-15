@@ -34,10 +34,15 @@ fn disconnected(userdata: &Arc<RwMap>, device: DeviceShort) {
     }
 }
 
+fn reset(userdata: &Arc<RwMap>) {
+    userdata.get_mut::<DeviceMap>("device_map").unwrap().clear();
+}
+
 pub fn run_adb_tracker(userdata: Arc<RwMap>) -> JoinHandle<()> {
     tokio::task::spawn_blocking(move || {
         loop {
             let userdata_clone = userdata.clone();
+            reset(&userdata);
             let tracking = ADBServer::default().track_devices(move |device| {
                 let state = device.state.clone() as i32;
 
