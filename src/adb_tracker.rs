@@ -35,22 +35,26 @@ fn disconnected(userdata: &Arc<RwMap>, device: DeviceShort) {
 }
 
 pub fn run_adb_tracker(userdata: Arc<RwMap>) -> JoinHandle<()> {
-    tokio::task::spawn_blocking(|| {
-        ADBServer::default()
-            .track_devices(move |device| {
+    tokio::task::spawn_blocking(move || {
+        loop {
+            let userdata_clone = userdata.clone();
+            let tracking = ADBServer::default().track_devices(move |device| {
                 let state = device.state.clone() as i32;
 
-                let list = userdata.get_of::<DeviceList>().unwrap();
+                let list = userdata_clone.get_of::<DeviceList>().unwrap();
                 if let Some(port) = list.get_port(&device.identifier) {
                     if state == DeviceState::Device as i32 {
-                        connected(&userdata, device, port)?;
+                        connected(&userdata_clone, device, port)?;
                     } else if state == DeviceState::Offline as i32 {
                         tracing::info!("Device disconnected: {}", device.identifier.as_str());
-                        disconnected(&userdata, device);
+                        disconnected(&userdata_clone, device);
                     }
                 }
                 Ok(())
-            })
-            .unwrap();
+            });
+            if let Err(err) = tracking {
+                tracing::error!("Error while tracking devices: {}", err);
+            }
+        }
     })
 }
