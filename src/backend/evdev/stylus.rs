@@ -163,7 +163,7 @@ impl StylusBackend {
         if !self.last_button && pen_data.button {
             if self.barrel_timestamp == -1 {
                 // First clicking
-                self.barrel_timestamp = pen_data.timestamp
+                self.barrel_timestamp = pen_data.timestamp;
             } else if pen_data.timestamp - self.barrel_timestamp < BARREL_TIMEOUT {
                 // Second clicking
                 self.barrel_activated = true;
