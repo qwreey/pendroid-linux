@@ -18,14 +18,9 @@ use tokio::task::JoinHandle;
 pub type DeviceMap = HashMap<String, JoinHandle<()>>;
 
 #[tokio::main]
-async fn main() -> Result<(), String> {
+async fn run(command: Command) -> Result<(), String> {
     let userdata = Arc::new(RwMap::new());
-    let command = Command::parse();
     userdata.insert_of(command.clone());
-
-    setup_autolaunch::config(command.enable_autolaunch, command.disable_autolaunch)?;
-    setup_daemonize::config(command.daemon);
-    setup_logging::config(command.verbose);
 
     userdata.insert_of(command.devices);
     userdata.insert("device_map", DeviceMap::new());
@@ -35,4 +30,14 @@ async fn main() -> Result<(), String> {
         .err_to_string()?;
 
     Ok(())
+}
+
+fn main() -> Result<(), String> {
+    let command = Command::parse();
+
+    setup_autolaunch::config(command.enable_autolaunch, command.disable_autolaunch)?;
+    setup_daemonize::config(command.daemon);
+    setup_logging::config(command.verbose);
+
+    run(command)
 }
