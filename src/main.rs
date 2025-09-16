@@ -35,9 +35,9 @@ async fn run(command: Command) -> Result<(), String> {
 fn main() -> Result<(), String> {
     let command = Command::parse();
 
+    setup_logging::config(command.verbose);
     setup_autolaunch::config(command.enable_autolaunch, command.disable_autolaunch)?;
     setup_daemonize::config(command.daemon);
-    setup_logging::config(command.verbose);
 
     run(command)
 }
