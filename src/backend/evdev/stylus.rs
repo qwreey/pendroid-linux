@@ -127,8 +127,35 @@ impl StylusBackend {
         self.push_abs_event(ABS_TILT_X, pen_data.tilt_x as i32);
         self.push_abs_event(ABS_TILT_Y, pen_data.tilt_y as i32);
 
+        // Process double tap action
+        let last_barrel_activated = self.barrel_activated;
+        if !self.last_button && pen_data.button {
+            if self.barrel_timestamp == -1 {
+                // First clicking
+                self.barrel_timestamp = pen_data.timestamp;
+            } else if pen_data.timestamp - self.barrel_timestamp < BARREL_TIMEOUT {
+                // Second clicking
+                self.barrel_activated = true;
+                self.barrel_timestamp = -1;
+            } else {
+                // Timeout
+                self.barrel_timestamp = pen_data.timestamp;
+            }
+        }
+        self.last_button = pen_data.hover && pen_data.button;
+        if self.barrel_activated && (!pen_data.hover || !pen_data.button) {
+            self.barrel_activated = false;
+            self.barrel_timestamp = -1;
+        }
+        if last_barrel_activated != self.barrel_activated {
+            self.push_key(
+                &KeyCode::BTN_STYLUS,
+                if self.barrel_activated { 1 } else { 0 },
+            );
+        }
+
         // Hover -> Process tool (eraser, pencil)
-        if (hover_changed || button_changed) && pen_data.hover && !pen_data.down {
+        if (hover_changed || button_changed) && pen_data.hover && !pen_data.down && !self.barrel_activated {
             if pen_data.button {
                 if !hover_changed {
                     // Disable old tool
@@ -157,33 +184,6 @@ impl StylusBackend {
             );
         }
         self.current_hover = pen_data.hover;
-
-        // Process double tap action
-        let last_barrel_activated = self.barrel_activated;
-        if !self.last_button && pen_data.button {
-            if self.barrel_timestamp == -1 {
-                // First clicking
-                self.barrel_timestamp = pen_data.timestamp;
-            } else if pen_data.timestamp - self.barrel_timestamp < BARREL_TIMEOUT {
-                // Second clicking
-                self.barrel_activated = true;
-                self.barrel_timestamp = -1;
-            } else {
-                // Timeout
-                self.barrel_timestamp = pen_data.timestamp;
-            }
-        }
-        self.last_button = pen_data.hover && pen_data.button;
-        if self.barrel_activated && (!pen_data.hover || !pen_data.button) {
-            self.barrel_activated = false;
-            self.barrel_timestamp = -1;
-        }
-        if last_barrel_activated != self.barrel_activated {
-            self.push_key(
-                &KeyCode::BTN_STYLUS,
-                if self.barrel_activated { 1 } else { 0 },
-            );
-        }
 
         // Process pen down (touch)
         if pen_data.down != self.current_down {
