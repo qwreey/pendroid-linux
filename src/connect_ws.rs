@@ -87,6 +87,23 @@ pub async fn connect_ws(userdata: Arc<RwMap>, port: i32, device: DeviceShort) {
             }
 
             tracing::info!("Disconnected from ws://127.0.0.1:{}", port);
+
+            // Show notification
+            if userdata.get_of::<Command>().unwrap().notify_disconnected {
+                let device_name = device.identifier.clone();
+                tokio::spawn(async move {
+                    let notification = Notification::new()
+                        .summary("Pendroid Wired Disconnected")
+                        .body(format!("Disconnected from {}", &device_name).as_str())
+                        .appname("Pendroid Linux")
+                        .timeout(5)
+                        .show_async()
+                        .await;
+                    if let Err(err) = notification {
+                        tracing::error!("Error while displaying notification: {}", err);
+                    }
+                });
+            }
         }
 
         sleep(Duration::from_secs(3)).await;
