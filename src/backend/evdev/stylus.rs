@@ -172,6 +172,12 @@ impl StylusBackend {
             self.current_button = pen_data.button;
         }
 
+        // Process pen down (touch)
+        if pen_data.down != self.current_down {
+            self.push_key(&KeyCode::BTN_TOUCH, if pen_data.down { 1 } else { 0 });
+            self.current_down = pen_data.down;
+        }
+
         // Unhover -> Remove all tools
         if hover_changed && !pen_data.hover {
             self.push_key(
@@ -185,13 +191,7 @@ impl StylusBackend {
         }
         self.current_hover = pen_data.hover;
 
-        // Process pen down (touch)
-        if pen_data.down != self.current_down {
-            self.push_key(&KeyCode::BTN_TOUCH, if pen_data.down { 1 } else { 0 });
-            self.current_down = pen_data.down;
-        }
         self.push_msc(MiscCode::MSC_TIMESTAMP.0, pen_data.timestamp);
-
         self.device.emit(&self.inputs).err_to_string()?;
         Ok(())
     }
