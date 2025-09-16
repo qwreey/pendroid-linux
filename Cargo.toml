@@ -16,6 +16,7 @@ tokio = { version = "1.47.1", features = ["full"] }
 tokio-stream = "0.1.17"
 qwreey-utility-rs = "0.1.7"
 
+notify-rust = "4.11.7"
 bytebuffer = "2.3.0"
 evdev = "0.13.2"
 adb_client = "2.1.16"

@@ -1,13 +1,15 @@
 use std::{str::FromStr, sync::Arc};
 
+use adb_client::DeviceShort;
 use bytebuffer::{ByteReader, Endian};
 use futures_util::StreamExt;
 use http::Uri;
+use notify_rust::{Notification};
 use qwreey_utility_rs::RwMap;
 use tokio::time::{Duration, sleep};
 use tokio_websockets::ClientBuilder;
 
-use crate::{backend::InputBackend, parse::Event};
+use crate::{backend::InputBackend, cli::Command, parse::Event};
 
 fn process_buf(lazy_backend: &mut Option<InputBackend>, buf: &mut ByteReader) {
     let event = match Event::parse(buf) {
@@ -41,13 +43,31 @@ fn process_buf(lazy_backend: &mut Option<InputBackend>, buf: &mut ByteReader) {
     }
 }
 
-pub async fn connect_ws(_userdata: Arc<RwMap>, port: i32) {
+pub async fn connect_ws(userdata: Arc<RwMap>, port: i32, device: DeviceShort) {
     let uri = Uri::from_str(format!("ws://127.0.0.1:{}", port).as_str()).unwrap();
     loop {
         if let Ok((mut client, _)) = ClientBuilder::from_uri(uri.clone()).connect().await {
             let mut lazy_backend: Option<InputBackend> = None;
             tracing::info!("Connected to ws://127.0.0.1:{}", port);
 
+            // Show notification
+            if userdata.get_of::<Command>().unwrap().notify_connected {
+                let device_name = device.identifier.clone();
+                tokio::spawn(async move {
+                    let notification = Notification::new()
+                        .summary("Pendroid Wired Connected")
+                        .body(format!("Connected to {}", &device_name).as_str())
+                        .appname("Pendroid Linux")
+                        .timeout(5)
+                        .show_async()
+                        .await;
+                    if let Err(err) = notification {
+                        tracing::error!("Error while displaying notification: {}", err);
+                    }
+                });
+            }
+
+            // Get messages from server
             while let Some(item) = client.next().await {
                 let msg = match item {
                     Ok(msg) => msg,

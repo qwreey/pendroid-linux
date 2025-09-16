@@ -19,8 +19,8 @@ fn connected(userdata: &Arc<RwMap>, device: DeviceShort, port: i32) -> Result<()
         .forward(String::from("tcp:23227"), format!("tcp:{}", port))?;
 
     userdata.get_mut::<DeviceMap>("device_map").unwrap().insert(
-        device.identifier,
-        tokio::spawn(connect_ws(userdata.to_owned(), port)),
+        device.identifier.clone(),
+        tokio::spawn(connect_ws(userdata.to_owned(), port, device)),
     );
 
     Ok(())
