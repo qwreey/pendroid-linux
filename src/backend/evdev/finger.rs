@@ -50,13 +50,13 @@ impl FingerBackend {
                 // ABS X / Y
                 UinputAbsSetup::new(
                     AbsoluteAxisCode::ABS_X,
-                    // AbsInfo::new(0, 0, init_data.width as i32, 2, 4, 11),
-                    AbsInfo::new(0, 0, init_data.width as i32, 0, 0, 11),
+                    AbsInfo::new(0, 0, init_data.width as i32, 0, 4, 11),
+                    // AbsInfo::new(0, 0, init_data.width as i32, 0, 0, 11),
                 ),
                 UinputAbsSetup::new(
                     AbsoluteAxisCode::ABS_Y,
-                    // AbsInfo::new(0, 0, init_data.height as i32, 2, 4, 11),
-                    AbsInfo::new(0, 0, init_data.height as i32, 0, 0, 11),
+                    AbsInfo::new(0, 0, init_data.height as i32, 0, 4, 11),
+                    // AbsInfo::new(0, 0, init_data.height as i32, 0, 0, 11),
                 ),
                 // ABS MT X / Y
                 UinputAbsSetup::new(

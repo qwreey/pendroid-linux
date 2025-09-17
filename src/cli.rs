@@ -17,6 +17,10 @@ pub struct Command {
     pub notify_connected: bool,
     #[arg(long)]
     pub notify_disconnected: bool,
+    #[arg(long)]
+    pub connected_command: Option<String>,
+    #[arg(long)]
+    pub disconnected_command: Option<String>,
 }
 
 const PARSE_ERROR: &str = "The device argument must be provided in the DeviceName:port format";
