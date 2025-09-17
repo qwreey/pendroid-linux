@@ -50,20 +50,24 @@ impl FingerBackend {
                 // ABS X / Y
                 UinputAbsSetup::new(
                     AbsoluteAxisCode::ABS_X,
-                    AbsInfo::new(0, 0, init_data.width as i32, 2, 4, 11),
+                    // AbsInfo::new(0, 0, init_data.width as i32, 2, 4, 11),
+                    AbsInfo::new(0, 0, init_data.width as i32, 0, 0, 11),
                 ),
                 UinputAbsSetup::new(
                     AbsoluteAxisCode::ABS_Y,
-                    AbsInfo::new(0, 0, init_data.height as i32, 2, 4, 11),
+                    // AbsInfo::new(0, 0, init_data.height as i32, 2, 4, 11),
+                    AbsInfo::new(0, 0, init_data.height as i32, 0, 0, 11),
                 ),
                 // ABS MT X / Y
                 UinputAbsSetup::new(
                     AbsoluteAxisCode::ABS_MT_POSITION_X,
-                    AbsInfo::new(0, 0, init_data.width as i32, 2, 4, 11),
+                    // AbsInfo::new(0, 0, init_data.width as i32, 2, 4, 11),
+                    AbsInfo::new(0, 0, init_data.width as i32, 0, 0, 11),
                 ),
                 UinputAbsSetup::new(
                     AbsoluteAxisCode::ABS_MT_POSITION_Y,
-                    AbsInfo::new(0, 0, init_data.height as i32, 2, 4, 11),
+                    // AbsInfo::new(0, 0, init_data.height as i32, 2, 4, 11),
+                    AbsInfo::new(0, 0, init_data.height as i32, 0, 0, 11),
                 ),
                 // ABS SLOT
                 UinputAbsSetup::new(
@@ -83,12 +87,12 @@ impl FingerBackend {
                 KeyCode::BTN_TOOL_TRIPLETAP,
                 KeyCode::BTN_TOOL_QUADTAP,
                 KeyCode::BTN_TOOL_QUINTTAP,
-                KeyCode::BTN_LEFT,
+                // KeyCode::BTN_LEFT,
             ]))
             .err_to_string()?
             .with_properties(&AttributeSet::from_iter([
                 PropType::POINTER,
-                PropType::BUTTONPAD,
+                // PropType::BUTTONPAD,
             ]))
             .err_to_string()?
             .build()
@@ -111,6 +115,7 @@ impl FingerBackend {
     }
 
     // Update slot
+    #[inline(always)]
     pub fn update_slot(&mut self, new_slot: u8) {
         let slot = new_slot as i32;
         if slot != self.current_slot {
@@ -125,24 +130,19 @@ impl FingerBackend {
         let x = touch_data.x as i32;
         let y = touch_data.y as i32;
 
-        // Update ABS_MT_POSITION XY
-        if touch_data.x != -1 {
-            self.update_slot(touch_data.slot);
-            self.inputs.push_abs_event(ABS_MT_POSITION_X, x);
-            self.inputs.push_abs_event(ABS_X, x);
-        }
-        if touch_data.y != -1 {
-            self.update_slot(touch_data.slot);
-            self.inputs.push_abs_event(ABS_MT_POSITION_Y, y);
-            self.inputs.push_abs_event(ABS_Y, y);
-        }
-
         // Update ABS_MT_TRACKING_ID
         if self.touch_trackings[index] != touch_data.tracking_id {
             self.update_slot(touch_data.slot);
             self.touch_trackings[index] = touch_data.tracking_id;
             self.inputs
                 .push_abs_event(ABS_MT_TRACKING_ID, touch_data.tracking_id);
+        }
+
+        // Update ABS_MT_POSITION
+        if touch_data.x != -1 && touch_data.y != -1 {
+            self.update_slot(touch_data.slot);
+            self.inputs.push_abs_event(ABS_MT_POSITION_X, x);
+            self.inputs.push_abs_event(ABS_MT_POSITION_Y, y);
         }
 
         // Count touch
@@ -154,23 +154,30 @@ impl FingerBackend {
             }
         }
 
-        // Change mode (Finger / Double / ...)
-        if self.current_count != count {
-            if self.current_count != 0 {
-                self.inputs
-                    .push_key(&TOUCHS[self.current_count as usize], 0);
-            }
-            if count != 0 {
-                self.inputs.push_key(&TOUCHS[count as usize], 1);
-            }
-        }
-        self.current_count = count;
-
         // Touch event (BTN_TOUCH)
         let touching = count != 0;
         if self.current_touching != touching {
             self.current_touching = touching;
             self.inputs.push_key(&KeyCode::BTN_TOUCH, touching as i32);
+        }
+
+        // Change mode (Finger / Double / ...)
+        if self.current_count != count {
+            if self.current_count != 0 {
+                self.inputs
+                    .push_key(&TOUCHS[self.current_count as usize - 1], 0);
+            }
+            if count != 0 {
+                self.inputs.push_key(&TOUCHS[count as usize - 1], 1);
+            }
+        }
+        self.current_count = count;
+
+        // Update XY
+        if touch_data.x != -1 && touch_data.y != -1 && touch_data.slot == 0 {
+            self.update_slot(touch_data.slot);
+            self.inputs.push_abs_event(ABS_X, x);
+            self.inputs.push_abs_event(ABS_Y, y);
         }
 
         self.device.emit(self.inputs.as_slice()).err_to_string()?;
