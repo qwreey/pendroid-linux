@@ -7,17 +7,19 @@ pub fn config(enable_autolaunch: bool, disable_autolaunch: bool) -> Result<(), S
         return Ok(());
     }
 
-    let mut args: Vec<String> = args()
-        .filter(|this| this != "--enable-autolaunch" && this != "--disable-autolaunch")
-        .collect();
-
-    let path = args.remove(0);
+    let mut args_iter = args();
+    let path = args_iter.next().unwrap();
     let path = canonicalize(path)
         .err_to_string()
-        .heading_error("To enable autolaunch, execute pendroid-linux with an absolute path\n")?;
+        .heading_error("To enable autolaunch, execute pendroid-linux with an absolute path: ")?;
     let path = path.to_str().unwrap();
 
-    let auto = AutoLaunch::new("pendroid-linux", path, args.as_slice());
+    let args_vec: Vec<String> = args_iter
+        .filter(|this| this != "--enable-autolaunch" && this != "--disable-autolaunch")
+        .map(|str| format!("\"{}\"", str.replace("\"", "\"\"")))
+        .collect();
+
+    let auto = AutoLaunch::new("pendroid-linux", path, args_vec.as_slice());
     if enable_autolaunch {
         auto.enable().err_to_string()?;
         tracing::info!("Auto-Launch enabled");

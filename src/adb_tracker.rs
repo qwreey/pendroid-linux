@@ -29,8 +29,13 @@ fn connected(userdata: &Arc<RwMap>, device: DeviceShort, port: i32) -> Result<()
 fn disconnected(userdata: &Arc<RwMap>, device: DeviceShort) {
     let mut map = userdata.get_mut::<DeviceMap>("device_map").unwrap();
 
-    if let Some(task) = map.remove(device.identifier.as_str()) {
-        task.abort();
+    if let Some(task) = map.remove(device.identifier.as_str())
+        && !task.is_finished()
+    {
+        tokio::spawn(async move {
+            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+            task.abort();
+        });
     }
 }
 
