@@ -21,6 +21,12 @@ pub struct Command {
     pub connected_command: Option<String>,
     #[arg(long)]
     pub disconnected_command: Option<String>,
+    #[arg(long, default_value = "2")]
+    pub evdev_trackpad_fuzz: i32,
+    #[arg(long, default_value = "11")]
+    pub evdev_trackpad_res: i32,
+    #[arg(long, default_value = "4")]
+    pub evdev_trackpad_flat: i32,
 }
 
 const PARSE_ERROR: &str = "The device argument must be provided in the DeviceName:port format";

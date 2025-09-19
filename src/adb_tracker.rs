@@ -5,7 +5,7 @@ use qwreey_utility_rs::RwMap;
 use tokio::task::JoinHandle;
 
 use crate::{
-    DeviceMap,
+    DeviceMap, WorkerIdMap,
     cli::{DeviceList, DeviceListUtil},
     connect_ws::connect_ws,
 };
@@ -28,6 +28,11 @@ fn connected(userdata: &Arc<RwMap>, device: DeviceShort, port: i32) -> Result<()
 
 fn disconnected(userdata: &Arc<RwMap>, device: DeviceShort) {
     let mut map = userdata.get_mut::<DeviceMap>("device_map").unwrap();
+
+    userdata
+        .get_mut::<WorkerIdMap>("worker_id_map")
+        .unwrap()
+        .remove(&device.identifier);
 
     if let Some(task) = map.remove(device.identifier.as_str())
         && !task.is_finished()

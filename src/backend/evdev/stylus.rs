@@ -1,3 +1,5 @@
+use crate::backend::BackendConfig;
+
 use super::{
     super::super::parse::{Init, Stylus},
     event_list::{EventList, GetInputs, PushEvent},
@@ -49,7 +51,7 @@ impl GetInputs for StylusBackend {
 
 impl StylusBackend {
     // Create new evdev device
-    pub fn new(init_data: &Init) -> Result<Self, String> {
+    pub fn new(_config: &BackendConfig, init_data: &Init) -> Result<Self, String> {
         let mut device = VirtualDevice::builder()
             .err_to_string()?
             .name("pendroid-stylus")
@@ -155,7 +157,11 @@ impl StylusBackend {
         }
 
         // Hover -> Process tool (eraser, pencil)
-        if (hover_changed || button_changed) && pen_data.hover && !pen_data.down && !self.barrel_activated {
+        if (hover_changed || button_changed)
+            && pen_data.hover
+            && !pen_data.down
+            && !self.barrel_activated
+        {
             if pen_data.button {
                 if !hover_changed {
                     // Disable old tool

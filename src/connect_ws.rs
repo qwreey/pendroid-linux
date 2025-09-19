@@ -9,13 +9,22 @@ use qwreey_utility_rs::RwMap;
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command as TokioCommand,
-    time::{Duration, sleep},
+    time::{Duration, Instant, sleep},
 };
 use tokio_websockets::ClientBuilder;
 
-use crate::{backend::InputBackend, cli::Command, parse::Event};
+use crate::{
+    WorkerIdMap,
+    backend::{BackendConfig, InputBackend},
+    cli::Command,
+    parse::Event,
+};
 
-fn process_buf(lazy_backend: &mut Option<InputBackend>, buf: &mut ByteReader) {
+fn process_buf(
+    userdata: &Arc<RwMap>,
+    lazy_backend: &mut Option<InputBackend>,
+    buf: &mut ByteReader,
+) {
     let event = match Event::parse(buf) {
         Ok(event) => event,
         Err(err) => {
@@ -26,7 +35,7 @@ fn process_buf(lazy_backend: &mut Option<InputBackend>, buf: &mut ByteReader) {
 
     // Init backend
     if let Event::Init(ref init) = event {
-        match InputBackend::new(init) {
+        match InputBackend::new(userdata.get_of::<BackendConfig>().unwrap().clone(), init) {
             Ok(backend) => {
                 *lazy_backend = Some(backend);
             }
@@ -92,6 +101,12 @@ pub fn execute_command(command: &str, device: &str) {
 }
 
 pub async fn connect_ws(userdata: Arc<RwMap>, port: i32, device: DeviceShort) {
+    let started_at = Instant::now();
+    userdata
+        .get_mut::<WorkerIdMap>("worker_id_map")
+        .unwrap()
+        .insert(device.identifier.clone(), started_at);
+
     let uri = Uri::from_str(format!("ws://127.0.0.1:{}", port).as_str()).unwrap();
     loop {
         if let Ok((mut client, _)) = ClientBuilder::from_uri(uri.clone()).connect().await {
@@ -137,7 +152,7 @@ pub async fn connect_ws(userdata: Arc<RwMap>, port: i32, device: DeviceShort) {
 
                 let mut buf = ByteReader::from_bytes(msg.as_payload());
                 buf.set_endian(Endian::LittleEndian);
-                process_buf(&mut lazy_backend, &mut buf);
+                process_buf(&userdata, &mut lazy_backend, &mut buf);
             }
 
             tracing::info!("Disconnected from ws://127.0.0.1:{}", port);
@@ -162,6 +177,21 @@ pub async fn connect_ws(userdata: Arc<RwMap>, port: i32, device: DeviceShort) {
             // Execute disconnected command
             if let Some(ref command) = command.disconnected_command {
                 execute_command(command, &device.identifier);
+            }
+        }
+
+        match userdata
+            .get::<WorkerIdMap>("worker_id_map")
+            .unwrap()
+            .get(&device.identifier)
+        {
+            None => {
+                break;
+            }
+            Some(id) => {
+                if id != &started_at {
+                    break;
+                }
             }
         }
 

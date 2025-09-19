@@ -3,6 +3,8 @@ mod finger;
 mod stylus;
 mod with_abs;
 
+use crate::backend::BackendConfig;
+
 use super::super::parse::{Event, Init};
 use finger::FingerBackend;
 use stylus::StylusBackend;
@@ -12,10 +14,10 @@ pub struct InputBackend {
     finger: FingerBackend,
 }
 impl InputBackend {
-    pub fn new(init_data: &Init) -> Result<Self, String> {
+    pub fn new(config: BackendConfig, init_data: &Init) -> Result<Self, String> {
         Ok(Self {
-            stylus: StylusBackend::new(init_data)?,
-            finger: FingerBackend::new(init_data)?,
+            stylus: StylusBackend::new(&config, init_data)?,
+            finger: FingerBackend::new(&config, init_data)?,
         })
     }
 

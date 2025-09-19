@@ -1,3 +1,5 @@
+use crate::backend::BackendConfig;
+
 use super::{
     super::super::parse::{Finger, Init},
     event_list::PushEvent,
@@ -35,8 +37,9 @@ pub struct FingerBackend {
 }
 
 impl FingerBackend {
+    // TODO: custumizable fuzz, flat, resolution variable by command line arguments
     // Create new evdev device
-    pub fn new(init_data: &Init) -> Result<Self, String> {
+    pub fn new(config: &BackendConfig, init_data: &Init) -> Result<Self, String> {
         let mut device = VirtualDevice::builder()
             .err_to_string()?
             .name("pendroid-touchpad")
@@ -50,24 +53,52 @@ impl FingerBackend {
                 // ABS X / Y
                 UinputAbsSetup::new(
                     AbsoluteAxisCode::ABS_X,
-                    AbsInfo::new(0, 0, init_data.width as i32, 0, 4, 11),
+                    AbsInfo::new(
+                        0,
+                        0,
+                        init_data.width as i32,
+                        config.evdev_trackpad_fuzz,
+                        config.evdev_trackpad_flat,
+                        config.evdev_trackpad_res,
+                    ),
                     // AbsInfo::new(0, 0, init_data.width as i32, 0, 0, 11),
                 ),
                 UinputAbsSetup::new(
                     AbsoluteAxisCode::ABS_Y,
-                    AbsInfo::new(0, 0, init_data.height as i32, 0, 4, 11),
+                    AbsInfo::new(
+                        0,
+                        0,
+                        init_data.height as i32,
+                        config.evdev_trackpad_fuzz,
+                        config.evdev_trackpad_flat,
+                        config.evdev_trackpad_res,
+                    ),
                     // AbsInfo::new(0, 0, init_data.height as i32, 0, 0, 11),
                 ),
                 // ABS MT X / Y
                 UinputAbsSetup::new(
                     AbsoluteAxisCode::ABS_MT_POSITION_X,
                     // AbsInfo::new(0, 0, init_data.width as i32, 2, 4, 11),
-                    AbsInfo::new(0, 0, init_data.width as i32, 0, 0, 11),
+                    AbsInfo::new(
+                        0,
+                        0,
+                        init_data.width as i32,
+                        config.evdev_trackpad_fuzz,
+                        config.evdev_trackpad_flat,
+                        config.evdev_trackpad_res,
+                    ),
                 ),
                 UinputAbsSetup::new(
                     AbsoluteAxisCode::ABS_MT_POSITION_Y,
                     // AbsInfo::new(0, 0, init_data.height as i32, 2, 4, 11),
-                    AbsInfo::new(0, 0, init_data.height as i32, 0, 0, 11),
+                    AbsInfo::new(
+                        0,
+                        0,
+                        init_data.height as i32,
+                        config.evdev_trackpad_fuzz,
+                        config.evdev_trackpad_flat,
+                        config.evdev_trackpad_res,
+                    ),
                 ),
                 // ABS SLOT
                 UinputAbsSetup::new(
